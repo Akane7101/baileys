@@ -397,7 +397,40 @@ export const generateWAMessageContent = async (
 	options: MessageContentGenerationOptions
 ) => {
 	let m: WAMessageContent = {}
-	if (hasNonNullishProperty(message, 'text')) {
+	if (hasNonNullishProperty(message, 'interactiveButtons')) {
+		const interactive: any = {
+			nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.fromObject({
+				buttons: message.interactiveButtons
+			})
+		}
+		if ('text' in message && message.text) {
+			interactive.body = { text: message.text }
+			interactive.header = {
+				title: message.title || '',
+				subtitle: message.subtitle || '',
+				hasMediaAttachment: false
+			}
+		} else if ('caption' in message && message.caption) {
+			interactive.body = { text: message.caption }
+			interactive.header = {
+				title: message.title || '',
+				subtitle: message.subtitle || '',
+				hasMediaAttachment: message.hasMediaAttachment ?? (Object.keys(m).length > 0)
+			}
+			if (Object.keys(m).length > 0) {
+				Object.assign(interactive.header, m)
+			}
+		}
+		if (message.footer) {
+			interactive.footer = { text: message.footer }
+		}
+		m = {
+			interactiveMessage: interactive,
+			messageContextInfo: {
+				messageSecret: randomBytes(32)
+			}
+		}
+	} else if (hasNonNullishProperty(message, 'text')) {
 		const extContent = { text: message.text } as WATextMessage
 
 		let urlInfo = message.linkPreview

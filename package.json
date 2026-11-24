@@ -33,7 +33,6 @@
     "lint": "tsc && eslint src --ext .js,.ts",
     "lint:fix": "npm run format && npm run lint -- --fix",
     "prepack": "npm run build",
-    "prepare": "npm run build",
     "preinstall": "node ./engine-requirements.js",
     "release": "release-it",
     "test": "node --experimental-vm-modules ./node_modules/.bin/jest --testMatch '**/*.test.ts'",
@@ -51,7 +50,8 @@
     "pino": "^9.6",
     "protobufjs": "^7.5.6",
     "whatsapp-rust-bridge": "0.5.4",
-    "ws": "^8.13.0"
+    "ws": "^8.13.0",
+    "@adiwajshing/keyed-db": "^0.2.4"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",

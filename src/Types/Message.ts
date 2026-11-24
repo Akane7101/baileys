@@ -287,6 +287,15 @@ export type AnyRegularMessageContent = (
 	ViewOnce
 
 export type AnyMessageContent =
+	| {
+			interactiveButtons: any[]
+			text?: string
+			caption?: string
+			footer?: string
+			title?: string
+			subtitle?: string
+			hasMediaAttachment?: boolean
+	  }
 	| AnyRegularMessageContent
 	| {
 			forward: WAMessage
