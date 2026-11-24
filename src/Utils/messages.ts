@@ -392,43 +392,80 @@ function hasOptionalProperty<T, K extends PropertyKey>(obj: T, key: K): obj is W
 	return typeof obj === 'object' && obj !== null && key in obj && (obj as any)[key] !== null
 }
 
+const INTERACTIVE_MEDIA_KEYS = ['image', 'video', 'document'] as const
+
+const buildInteractiveContent = async (
+	source: Record<string, any>,
+	options: MessageContentGenerationOptions
+): Promise<WAMessageContent> => {
+	let mediaContent: WAMessageContent = {}
+	if (source.thumbnail) {
+		mediaContent = await prepareWAMessageMedia({ image: { url: source.thumbnail } }, options)
+	} else if (INTERACTIVE_MEDIA_KEYS.some(k => hasNonNullishProperty(source as AnyMessageContent, k))) {
+		mediaContent = await prepareWAMessageMedia(source as AnyMediaMessageContent, options)
+	}
+
+	const buttons = source.interactiveButtons ?? source.buttons ?? source.nativeFlowMessage?.buttons ?? []
+	const headerTitle =
+		typeof source.header === 'string'
+			? source.header
+			: (source.header?.title ?? (source.interactiveButtons ? source.title || '' : ''))
+	const headerSubtitle =
+		typeof source.header === 'object' && source.header
+			? source.header.subtitle || ''
+			: (source.subtitle || '')
+	const bodyText =
+		typeof source.body === 'object' && source.body
+			? source.body.text || ''
+			: (source.caption ?? source.text ?? (source.interactiveButtons ? '' : source.title) ?? '')
+	const footerText =
+		typeof source.footer === 'object' && source.footer ? source.footer.text || '' : (source.footer || '')
+	const hasMedia = source.hasMediaAttachment ?? Object.keys(mediaContent).length > 0
+
+	const interactive: any = {
+		header: {
+			title: headerTitle,
+			subtitle: headerSubtitle,
+			hasMediaAttachment: hasMedia,
+			...mediaContent
+		},
+		body: { text: bodyText },
+		nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.fromObject({
+			...(source.nativeFlowMessage || {}),
+			buttons
+		})
+	}
+	if (footerText) {
+		interactive.footer = { text: footerText }
+	}
+	if (source.contextInfo) {
+		interactive.contextInfo = source.contextInfo
+	}
+
+	return {
+		interactiveMessage: interactive,
+		messageContextInfo: {
+			messageSecret: randomBytes(32)
+		}
+	}
+}
+
 export const generateWAMessageContent = async (
 	message: AnyMessageContent,
 	options: MessageContentGenerationOptions
 ) => {
 	let m: WAMessageContent = {}
 	if (hasNonNullishProperty(message, 'interactiveButtons')) {
-		const interactive: any = {
-			nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.fromObject({
-				buttons: message.interactiveButtons
-			})
-		}
-		if ('text' in message && message.text) {
-			interactive.body = { text: message.text }
-			interactive.header = {
-				title: message.title || '',
-				subtitle: message.subtitle || '',
-				hasMediaAttachment: false
+		m = await buildInteractiveContent(message, options)
+	} else if (hasNonNullishProperty(message, 'interactiveMessage')) {
+		const raw = message.interactiveMessage
+		if (raw && (raw.nativeFlowMessage || raw.body || raw.header) && !raw.buttons) {
+			m = {
+				interactiveMessage: raw,
+				messageContextInfo: { messageSecret: randomBytes(32) }
 			}
-		} else if ('caption' in message && message.caption) {
-			interactive.body = { text: message.caption }
-			interactive.header = {
-				title: message.title || '',
-				subtitle: message.subtitle || '',
-				hasMediaAttachment: message.hasMediaAttachment ?? (Object.keys(m).length > 0)
-			}
-			if (Object.keys(m).length > 0) {
-				Object.assign(interactive.header, m)
-			}
-		}
-		if (message.footer) {
-			interactive.footer = { text: message.footer }
-		}
-		m = {
-			interactiveMessage: interactive,
-			messageContextInfo: {
-				messageSecret: randomBytes(32)
-			}
+		} else {
+			m = await buildInteractiveContent(raw || {}, options)
 		}
 	} else if (hasNonNullishProperty(message, 'text')) {
 		const extContent = { text: message.text } as WATextMessage

@@ -51,8 +51,11 @@ import {
 	type BinaryNode,
 	type BinaryNodeAttributes,
 	type FullJid,
+	getBinaryFilteredButtons,
 	getBinaryNodeChild,
 	getBinaryNodeChildren,
+	getButtonArgs,
+	getButtonType,
 	isHostedLidUser,
 	isHostedPnUser,
 	isJidBot,
@@ -1088,6 +1091,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				})
 			}
 
+			const buttonType = getButtonType(message)
+			if (!isNewsletter && buttonType && !isStatus && !getBinaryFilteredButtons(additionalNodes || [])) {
+				;(stanza.content as BinaryNode[]).push(...getButtonArgs(message))
+			}
+
 			if (additionalNodes && additionalNodes.length > 0) {
 				;(stanza.content as BinaryNode[]).push(...additionalNodes)
 			}
@@ -1196,6 +1204,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			return 'livelocation'
 		} else if (message.stickerMessage) {
 			return 'sticker'
+		} else if (message.stickerPackMessage) {
+			return 'sticker_pack'
 		} else if (message.listMessage) {
 			return 'list'
 		} else if (message.listResponseMessage) {

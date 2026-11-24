@@ -205,7 +205,7 @@ export type AnyRegularMessageContent = (({
     body?: string;
     footer?: string;
 } | SharePhoneNumber | RequestPhoneNumber) & ViewOnce;
-export type AnyMessageContent = {
+export type AnyMessageContent = ({
     interactiveButtons: any[];
     text?: string;
     caption?: string;
@@ -213,6 +213,11 @@ export type AnyMessageContent = {
     title?: string;
     subtitle?: string;
     hasMediaAttachment?: boolean;
+    image?: WAMediaUpload;
+    video?: WAMediaUpload;
+    document?: WAMediaUpload;
+} & Mentionable & Contextable) | {
+    interactiveMessage: any;
 } | AnyRegularMessageContent | {
     forward: WAMessage;
     force?: boolean;

@@ -12,4 +12,10 @@ export declare const reduceBinaryNodeToDictionary: (node: BinaryNode, tag: strin
 };
 export declare const getBinaryNodeMessages: ({ content }: BinaryNode) => proto.WebMessageInfo[];
 export declare function binaryNodeToString(node: BinaryNode | BinaryNode['content'], i?: number): string;
+/** Detects whether a relayed protobuf message requires biz/interactive stanza nodes. */
+export declare const getButtonType: (message: proto.IMessage) => string | null;
+/** Checks whether caller-supplied additionalNodes already include a biz/bot interactive wrapper. */
+export declare const getBinaryFilteredButtons: (nodeContent: BinaryNode[]) => boolean;
+/** Builds the `<biz>` stanza child node required by WhatsApp for nativeFlow/buttons/list messages. */
+export declare const getButtonArgs: (message: proto.IMessage) => BinaryNode[];
 //# sourceMappingURL=generic-utils.d.ts.map

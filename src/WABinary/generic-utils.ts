@@ -139,3 +139,86 @@ export function binaryNodeToString(node: BinaryNode | BinaryNode['content'], i =
 
 	return tag + content
 }
+
+const ORDER_FLOW_MAP: Record<string, string> = {
+	review_and_pay: 'order_details',
+	review_order: 'order_status',
+	payment_info: 'payment_info',
+	payment_status: 'payment_status',
+	payment_method: 'payment_method'
+}
+
+const NAMED_FLOW_MAP: Record<string, string> = {
+	cta_catalog: 'cta_catalog',
+	mpm: 'mpm',
+	call_permission_request: 'call_permission_request',
+	call_request: 'call_permission_request',
+	view_catalog: 'automated_greeting_message_view_catalog',
+	automated_greeting_message_view_catalog: 'automated_greeting_message_view_catalog',
+	wa_pay_detail: 'wa_payment_transaction_details',
+	wa_payment_transaction_details: 'wa_payment_transaction_details',
+	send_location: 'send_location',
+	open_webview: 'open_webview',
+	galaxy_message: 'galaxy_message'
+}
+
+/** Detects whether a relayed protobuf message requires biz/interactive stanza nodes. */
+export const getButtonType = (message: proto.IMessage): string | null => {
+	const msgContent = message.viewOnceMessage?.message || message.viewOnceMessageV2?.message || message
+	if (msgContent.listMessage) return 'list'
+	if (msgContent.buttonsMessage) return 'buttons'
+	const flowMsg = msgContent.interactiveMessage?.nativeFlowMessage
+	if (!flowMsg) return null
+	const btn = flowMsg.buttons?.[0]?.name
+	if (btn && ORDER_FLOW_MAP[btn]) return btn
+	return 'interactive'
+}
+
+/** Checks whether caller-supplied additionalNodes already include a biz/bot interactive wrapper. */
+export const getBinaryFilteredButtons = (nodeContent: BinaryNode[]): boolean => {
+	if (!Array.isArray(nodeContent)) return false
+	return nodeContent.some(
+		a =>
+			a.tag === 'biz' ||
+			a.tag === 'bot' ||
+			(Array.isArray(a.content) && a.content.some(c => c.tag === 'interactive' || c.tag === 'biz'))
+	)
+}
+
+/** Builds the `<biz>` stanza child node required by WhatsApp for nativeFlow/buttons/list messages. */
+export const getButtonArgs = (message: proto.IMessage): BinaryNode[] => {
+	const msgContent = message.viewOnceMessage?.message || message.viewOnceMessageV2?.message || message
+	const flowMsg = msgContent.interactiveMessage?.nativeFlowMessage
+	const btnFirst = flowMsg?.buttons?.[0]?.name
+	const ts = Math.floor(Date.now() / 1000) - 77980457
+
+	if (btnFirst && ORDER_FLOW_MAP[btnFirst]) {
+		return [{ tag: 'biz', attrs: { native_flow_name: ORDER_FLOW_MAP[btnFirst] }, content: [] }]
+	}
+
+	const engagement: BinaryNode = {
+		tag: 'engagement',
+		attrs: { customer_service_state: 'open', conversation_state: 'open' }
+	}
+	const bizAttrs = { actual_actors: '2', host_storage: '2', privacy_mode_ts: `${ts}` }
+
+	if (flowMsg || msgContent.buttonsMessage) {
+		const flowName = (btnFirst && NAMED_FLOW_MAP[btnFirst]) || 'mixed'
+		return [
+			{
+				tag: 'biz',
+				attrs: bizAttrs,
+				content: [
+					engagement,
+					{
+						tag: 'interactive',
+						attrs: { type: 'native_flow', v: '1' },
+						content: [{ tag: 'native_flow', attrs: { v: '9', name: flowName }, content: [] }]
+					}
+				]
+			}
+		]
+	}
+
+	return [{ tag: 'biz', attrs: bizAttrs, content: [engagement] }]
+}

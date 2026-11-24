@@ -287,7 +287,7 @@ export type AnyRegularMessageContent = (
 	ViewOnce
 
 export type AnyMessageContent =
-	| {
+	| ({
 			interactiveButtons: any[]
 			text?: string
 			caption?: string
@@ -295,6 +295,13 @@ export type AnyMessageContent =
 			title?: string
 			subtitle?: string
 			hasMediaAttachment?: boolean
+			image?: WAMediaUpload
+			video?: WAMediaUpload
+			document?: WAMediaUpload
+	  } & Mentionable &
+			Contextable)
+	| {
+			interactiveMessage: any
 	  }
 	| AnyRegularMessageContent
 	| {
